@@ -7,18 +7,29 @@ find_package(catkin REQUIRED COMPONENTS rospy)
 ## See http://ros.org/doc/api/catkin/html/user_guide/setup_dot_py.html
 catkin_python_setup()
 
-#add_service_files(
-#    DIRECTORY srv
-#    FILES
-#    MotionCapture.srv
-#    RawCameraTransforms.srv
-#    RawCameraTransformsV2.srv
-#    IntrinsicCalibration.srv
-#)
-#generate_messages(DEPENDENCIES std_msgs geometry_msgs sensor_msgs visp_hand2eye_calibration)
+find_package(catkin REQUIRED COMPONENTS
+  std_msgs
+  geometry_msgs
+  message_generation
+)
+
+add_message_files(
+  FILES
+  trignoIMUEMG.msg
+  trignoIMUEMGHistory.msg
+)
+
+generate_messages(
+  DEPENDENCIES
+  std_msgs
+  geometry_msgs
+)
+
 catkin_package(
-    CATKIN_DEPENDS 
-    rospy 
+  CATKIN_DEPENDS
+  rospy
+  std_msgs
+  geometry_msgs
 )
 include_directories(include ${catkin_INCLUDE_DIRS})
 
