@@ -1,2 +1,0 @@
-float64 start_time
-trigno_capture/trignoIMUEMG[] trigno_imuemg

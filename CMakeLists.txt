@@ -15,8 +15,10 @@ find_package(catkin REQUIRED COMPONENTS
 
 add_message_files(
   FILES
-  trignoIMUEMG.msg
-  trignoIMUEMGHistory.msg
+  trignoIMU.msg
+  trignoMultiIMU.msg
+  trignoEMG.msg
+  trignoMultiEMG.msg
 )
 
 generate_messages(
