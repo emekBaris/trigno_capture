@@ -1,4 +1,4 @@
 float64 start_time
-string imu_pos
-int16 imu_id
+string emg_pos
+int16 emg_id
 float64[] emg

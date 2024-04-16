@@ -7,7 +7,34 @@ import datetime
 import pandas as pd
 from trigno_capture.msg import trignoIMU, trignoMultiIMU, trignoEMG, trignoMultiEMG
 from geometry_msgs.msg import Quaternion
+from trigno_msgs.msg import trignoEMG, trignoIMU, trignoMultiIMU, trignoMultiEMG
+from PyQt5.QtWidgets import QApplication, QPushButton, QVBoxLayout, QWidget
+from PyQt5.QtCore import QCoreApplication
+import sys # We need sys so that we can pass argv to QApplication
+from scipy import signal
 
+class GuiApp(QWidget):
+    def __init__(self, trigno_capture):
+        super().__init__()
+        self.trigno_capture = trigno_capture
+        self.initUI()
+
+
+    def initUI(self):
+        self.setWindowTitle('Simple Button GUI')
+        layout = QVBoxLayout(self)
+
+        self.button = QPushButton('Calibrate', self)
+        self.button.clicked.connect(self.onButtonClicked)
+
+        self.button.setFixedSize(300, 200)  # Set to 200px wide by 50px tall
+        self.button.setStyleSheet("font-size: 40px;")
+
+        layout.addWidget(self.button)
+        self.setLayout(layout)
+
+    def onButtonClicked(self):
+        self.trigno_capture.calibrate()
 class TrignoCapture:
     def __init__(self, sensors):
         # self.trigno_sensors = TrignoAdapter()
@@ -22,23 +49,23 @@ class TrignoCapture:
         self.imuIDs = []
         self.imuLabels = []
 
-        for label, mode in sensors.items():
+        for id, [pos, mode] in sensors.items():
             if(mode == 'both'):
-                self.emgIDs.append(int(label))
-                self.imuIDs.append(int(label))
-                self.emgLabels.append(label)
-                self.imuLabels.append(label)
+                self.emgIDs.append(id)
+                self.imuIDs.append(id)
+                self.emgLabels.append(pos)
+                self.imuLabels.append(pos)
             elif(mode == 'emg'):
-                self.emgIDs.append(int(label))
-                self.emgLabels.append(label)
+                self.emgIDs.append(id)
+                self.emgLabels.append(pos)
             elif(mode == 'imu'):
-                self.imuIDs.append(int(label))
-                self.imuLabels.append(label)
+                self.imuIDs.append(id)
+                self.imuLabels.append(pos)
 
         self.emg_sensors.add_sensors(sensors_mode='EMG', sensors_ids = tuple(self.emgIDs),
-                                        sensors_labels = tuple(self.emgLabels))
+                                        sensors_labels = tuple(str(self.emgIDs)))
         self.imu_sensors.add_sensors(sensors_mode='ORIENTATION', sensors_ids = tuple(self.imuIDs),
-                                        sensors_labels = tuple(self.imuLabels))
+                                        sensors_labels = tuple(str(self.imuIDs)))
 
         self.imuPublisher = rospy.Publisher('trigno_imu', trignoMultiIMU, queue_size = 10)
         self.emgPublisher = rospy.Publisher('trigno_emg', trignoMultiEMG, queue_size = 10)
@@ -46,6 +73,7 @@ class TrignoCapture:
         self.empty_counter_imu = 0
         self.empty_counter_emg = 0
         self.call_counter = 0
+        self.q0List = [] # will be a list of quaternions
     def advance(self):
         self.emgData = self.emg_sensors.sensors_reading('', False)
         self.imuData = self.imu_sensors.sensors_reading('', False)
@@ -64,54 +92,113 @@ class TrignoCapture:
             print("Empty EMG", self.empty_counter_emg, "in ", self.call_counter)
 
         if len(self.imuData) != 0:
-            # pass
+            pass
             self.publish()
 
         #print(emgData)
         #print(emgData.loc[0])
         # print(imuData)
+
+    def downSample(self, data, original_fs, desired_fs):
+        """
+        Process the EMG signal and downsample it. Written by Chatgpt 4
+
+        Parameters:
+        - emg_data: list or numpy array of raw EMG data points.
+        - original_fs: Original sampling frequency of the EMG data.
+        - desired_fs: Desired sampling frequency after downsampling.
+
+        Returns:
+        - downsampled_signal: The processed and downsampled EMG signal.
+        """
+        # # Bandpass filter
+        # bp_sos = signal.butter(6, [20, 500], btype='bandpass', fs=original_fs, output='sos')
+        # bp_filtered = signal.sosfilt(bp_sos, data)
+        #
+        # # Notch filter
+        # notch_freq = 60  # Center frequency of notch filter
+        # quality_factor = 30  # Quality factor
+        # b_notch, a_notch = signal.iirnotch(notch_freq, quality_factor, original_fs)
+        # notch_filtered = signal.filtfilt(b_notch, a_notch, bp_filtered)
+        #
+        # # Full-wave rectification
+        # rectified_signal = numpy.abs(notch_filtered)
+        #
+        # # Low-pass filter
+        # lp_sos = signal.butter(6, 10, btype='low', fs=original_fs, output='sos')
+        # low_passed_signal = signal.sosfilt(lp_sos, rectified_signal)
+
+        # Downsampling
+        downsample_factor = int(original_fs / desired_fs)
+        downsampled_signal = data[::downsample_factor]
+
+        # print(numpy.size(downsampled_signal))
+        return downsampled_signal
+
     def publish(self):
 
         multiIMUMsg = trignoMultiIMU()
         multiEMGMsg = trignoMultiEMG()
 
-
-
-        for sensorId in list(set(self.emgIDs) | set(self.imuIDs)):
+        for imuId, imuLabel, q0 in zip(self.imuIDs, self.imuLabels, self.q0List):
             imuMsg = trignoIMU()
-            emgMsg = trignoEMG()
+            imuMsg.imu_id = imuId
+            imuMsg.imu_pos = imuLabel
+            data = self.imuData
+            data['Sensor_id'] = data['Sensor_id'].astype(int)
+            imuMsg.start_time = data.index[0]
+            imuMsg.q0 = q0
 
-            imuMsg.imu_id = sensorId
-            emgMsg.imu_id = sensorId
-            for dataIndex, data in enumerate([self.imuData, self.emgData]):
-                data['Sensor_id'] = data['Sensor_id'].astype(int)
-
-                if(dataIndex == 0): # imu
-                    imuMsg.start_time = data.index[0]
-                elif(dataIndex == 1): # emg
-                    emgMsg.start_time = data.index[0]
-                for _, dataPoint in data[data['Sensor_id'] == sensorId].iterrows():
-                    if (dataIndex == 0):  # imu
-                        quaternion = Quaternion()
-                        quaternion.x = dataPoint['qx']
-                        quaternion.y = dataPoint['qy']
-                        quaternion.z = dataPoint['qz']
-                        quaternion.w = dataPoint['qw']
-                        imuMsg.q.append(quaternion)
-                    elif (dataIndex == 1):  # emg
-                        emg = dataPoint['EMG']
-                        emgMsg.emg.append(emg)
+            for _, dataPoint in data[data['Sensor_id'] == imuId].iterrows():
+                quaternion = Quaternion()
+                quaternion.x = dataPoint['qx']
+                quaternion.y = dataPoint['qy']
+                quaternion.z = dataPoint['qz']
+                quaternion.w = dataPoint['qw']
+                imuMsg.q.append(quaternion)
 
             multiIMUMsg.trigno_imu.append(imuMsg)
-            multiEMGMsg.trigno_emg.append(emgMsg)
 
         self.imuPublisher.publish(multiIMUMsg)
+
+        for emgId, emgLabel in zip(self.emgIDs, self.emgLabels):
+            emgMsg = trignoEMG()
+            emgMsg.emg_id = emgId
+            emgMsg.emg_pos = emgLabel
+            data = self.emgData
+            data['Sensor_id'] = data['Sensor_id'].astype(int)
+            emgMsg.start_time = data.index[0]
+            data = data[data['Sensor_id'] == emgId]
+            data = data['EMG'].to_numpy()
+            # print("ID: ", emgId)
+            # print(numpy.size(data))
+            data = self.downSample(data, 2000, 300);
+            for dataPoint in data:
+                emgMsg.emg.append(dataPoint)
+            multiEMGMsg.trigno_emg.append(emgMsg)
+
         self.emgPublisher.publish(multiEMGMsg)
+
+    def calibrate(self):
+        self.q0List = []
+        for imuId in self.imuIDs:
+            data = self.imuData
+            data['Sensor_id'] = data['Sensor_id'].astype(int)
+            data = data[data['Sensor_id'] == imuId]
+            q = Quaternion()
+            q.x = data.iloc[0]['qx']
+            q.y = data.iloc[0]['qy']
+            q.z = data.iloc[0]['qz']
+            q.w = data.iloc[0]['qw']
+            print("sensor ", imuId, "calibration q: ")
+            print(q)
+            self.q0List.append(q)
 
     def start(self):
         self.emg_sensors.start_acquisition()
         self.imu_sensors.start_acquisition()
         time.sleep(2)
+
     def stop(self):
         self.emg_sensors.stop_acquisition()
         self.imu_sensors.stop_acquisition()
@@ -120,16 +207,26 @@ if __name__ == "__main__":
     rospy.init_node("trigno_capture")
 
     # Dictionary of the sensor with sensor label and mode
-    # sensors = {'1': 'both', '2': 'both', '3': 'both', '4': 'both', '5': 'both', '6': 'both', '7': 'both', '8': 'both'}
+    # sensors = {1: ['left_thigh_front', 'both'], 2: ['left_thigh_back', 'both'], 3: ['left_shank_front', 'both'],
+    #            4: ['left_shank_back', 'both'], 5: ['right_thigh_front', 'both'], 6: ['right_thigh_back', 'both'],
+    #            7: ['right_shank_front', 'both'], 8: ['right_shank_back', 'both'], 9: ['trunk', 'both']}
 
-    # sensors = {'1': 'both', '2': 'both', '3': 'both', '4': 'both'}
+    # sensors = {1: ['left_thigh_front', 'both'], 2: ['left_thigh_back', 'both']}
 
-    sensors = {'1': 'both', '2': 'both'}
+    sensorPosList = []
+
+    # sensors = {1: ['left_thigh_front', 'both']}
+    sensors = {1: ['left_thigh_front', 'both'], 2: ['left_thigh_back', 'both'], 3: ['left_thigh_front', 'both']}
 
     trigno_capture = TrignoCapture(sensors)
     trigno_capture.start()
     rospy.on_shutdown(trigno_capture.stop)
     rospy.loginfo("Sensor node is ready.")
+
+    # Initialize PyQt application
+    app = QApplication(sys.argv)
+    gui = GuiApp(trigno_capture)
+    gui.show()
 
     rate = 50
     while not rospy.is_shutdown():
@@ -137,11 +234,12 @@ if __name__ == "__main__":
         trigno_capture.advance()
         # print("advance takes: ", (time.perf_counter() - prevTime)*1000, "ms.")
 
+        # Process PyQt events to keep GUI responsive
+        QCoreApplication.processEvents()
+
         while(time.perf_counter() - prevTime < 1.0/rate):
             pass
 
-        timePassed = time.perf_counter() - prevTime
+        #timePassed = time.perf_counter() - prevTime
         prevTime = time.perf_counter()
         # print("Time diff: ", timePassed*1000)
-
-
