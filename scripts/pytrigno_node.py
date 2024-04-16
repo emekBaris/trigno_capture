@@ -73,7 +73,13 @@ class TrignoCapture:
         self.empty_counter_imu = 0
         self.empty_counter_emg = 0
         self.call_counter = 0
-        self.q0List = [] # will be a list of quaternions
+
+        self.q0List = [] # initializing list of Quat0
+        for imuId in self.imuIDs:
+            q = Quaternion()
+            self.q0List.append(q)
+
+
     def advance(self):
         self.emgData = self.emg_sensors.sensors_reading('', False)
         self.imuData = self.imu_sensors.sensors_reading('', False)
@@ -100,33 +106,6 @@ class TrignoCapture:
         # print(imuData)
 
     def downSample(self, data, original_fs, desired_fs):
-        """
-        Process the EMG signal and downsample it. Written by Chatgpt 4
-
-        Parameters:
-        - emg_data: list or numpy array of raw EMG data points.
-        - original_fs: Original sampling frequency of the EMG data.
-        - desired_fs: Desired sampling frequency after downsampling.
-
-        Returns:
-        - downsampled_signal: The processed and downsampled EMG signal.
-        """
-        # # Bandpass filter
-        # bp_sos = signal.butter(6, [20, 500], btype='bandpass', fs=original_fs, output='sos')
-        # bp_filtered = signal.sosfilt(bp_sos, data)
-        #
-        # # Notch filter
-        # notch_freq = 60  # Center frequency of notch filter
-        # quality_factor = 30  # Quality factor
-        # b_notch, a_notch = signal.iirnotch(notch_freq, quality_factor, original_fs)
-        # notch_filtered = signal.filtfilt(b_notch, a_notch, bp_filtered)
-        #
-        # # Full-wave rectification
-        # rectified_signal = numpy.abs(notch_filtered)
-        #
-        # # Low-pass filter
-        # lp_sos = signal.butter(6, 10, btype='low', fs=original_fs, output='sos')
-        # low_passed_signal = signal.sosfilt(lp_sos, rectified_signal)
 
         # Downsampling
         downsample_factor = int(original_fs / desired_fs)
@@ -172,7 +151,7 @@ class TrignoCapture:
             data = data['EMG'].to_numpy()
             # print("ID: ", emgId)
             # print(numpy.size(data))
-            data = self.downSample(data, 2000, 300);
+            data = self.downSample(data, 2000, 1000);
             for dataPoint in data:
                 emgMsg.emg.append(dataPoint)
             multiEMGMsg.trigno_emg.append(emgMsg)
