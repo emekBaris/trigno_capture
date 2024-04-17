@@ -67,8 +67,8 @@ class TrignoCapture:
         self.imu_sensors.add_sensors(sensors_mode='ORIENTATION', sensors_ids = tuple(self.imuIDs),
                                         sensors_labels = tuple(str(self.imuIDs)))
 
-        self.imuPublisher = rospy.Publisher('trigno_imu', trignoMultiIMU, queue_size = 10)
-        self.emgPublisher = rospy.Publisher('trigno_emg', trignoMultiEMG, queue_size = 10)
+        self.imuPublisher = rospy.Publisher('/X2_SRA_A/trigno_imu', trignoMultiIMU, queue_size = 10)
+        self.emgPublisher = rospy.Publisher('/X2_SRA_A/trigno_emg', trignoMultiEMG, queue_size = 10)
 
         self.empty_counter_imu = 0
         self.empty_counter_emg = 0
@@ -188,16 +188,13 @@ if __name__ == "__main__":
     rospy.init_node("trigno_capture")
 
     # Dictionary of the sensor with sensor label and mode
-    # sensors = {1: ['left_thigh_front', 'both'], 2: ['left_thigh_back', 'both'], 3: ['left_shank_front', 'both'],
-    #            4: ['left_shank_back', 'both'], 5: ['right_thigh_front', 'both'], 6: ['right_thigh_back', 'both'],
-    #            7: ['right_shank_front', 'both'], 8: ['right_shank_back', 'both'], 9: ['trunk', 'both']}
+    sensors = {1: ['left_thigh_front', 'both'], 2: ['left_thigh_back', 'both'], 3: ['left_shank_front', 'both'],
+               4: ['left_shank_back', 'both'], 5: ['right_thigh_front', 'both'], 6: ['right_thigh_back', 'both'],
+               7: ['right_shank_front', 'both'], 8: ['right_shank_back', 'both'], 9: ['trunk_back', 'both']}
 
     # sensors = {1: ['left_thigh_front', 'both'], 2: ['left_thigh_back', 'both']}
-
-    sensorPosList = []
-
     # sensors = {1: ['left_thigh_front', 'both']}
-    sensors = {1: ['left_thigh_front', 'both'], 2: ['left_thigh_back', 'both'], 3: ['left_thigh_front', 'both']}
+    # sensors = {1: ['left_thigh_front', 'both'], 2: ['left_thigh_back', 'both'], 3: ['left_thigh_front', 'both']}
 
     trigno_capture = TrignoCapture(sensors)
     trigno_capture.start()
