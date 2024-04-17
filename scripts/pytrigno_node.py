@@ -119,44 +119,46 @@ class TrignoCapture:
         multiIMUMsg = trignoMultiIMU()
         multiEMGMsg = trignoMultiEMG()
 
-        for imuId, imuLabel, q0 in zip(self.imuIDs, self.imuLabels, self.q0List):
-            imuMsg = trignoIMU()
-            imuMsg.imu_id = imuId
-            imuMsg.imu_pos = imuLabel
-            data = self.imuData
-            data['Sensor_id'] = data['Sensor_id'].astype(int)
-            imuMsg.start_time = data.index[0]
-            imuMsg.q0 = q0
+        if len(self.imuData) > 0:
+            for imuId, imuLabel, q0 in zip(self.imuIDs, self.imuLabels, self.q0List):
+                imuMsg = trignoIMU()
+                imuMsg.imu_id = imuId
+                imuMsg.imu_pos = imuLabel
+                data = self.imuData
+                data['Sensor_id'] = data['Sensor_id'].astype(int)
+                imuMsg.start_time = data.index[0]
+                imuMsg.q0 = q0
 
-            for _, dataPoint in data[data['Sensor_id'] == imuId].iterrows():
-                quaternion = Quaternion()
-                quaternion.x = dataPoint['qx']
-                quaternion.y = dataPoint['qy']
-                quaternion.z = dataPoint['qz']
-                quaternion.w = dataPoint['qw']
-                imuMsg.q.append(quaternion)
+                for _, dataPoint in data[data['Sensor_id'] == imuId].iterrows():
+                    quaternion = Quaternion()
+                    quaternion.x = dataPoint['qx']
+                    quaternion.y = dataPoint['qy']
+                    quaternion.z = dataPoint['qz']
+                    quaternion.w = dataPoint['qw']
+                    imuMsg.q.append(quaternion)
 
-            multiIMUMsg.trigno_imu.append(imuMsg)
+                multiIMUMsg.trigno_imu.append(imuMsg)
 
-        self.imuPublisher.publish(multiIMUMsg)
+            self.imuPublisher.publish(multiIMUMsg)
 
-        for emgId, emgLabel in zip(self.emgIDs, self.emgLabels):
-            emgMsg = trignoEMG()
-            emgMsg.emg_id = emgId
-            emgMsg.emg_pos = emgLabel
-            data = self.emgData
-            data['Sensor_id'] = data['Sensor_id'].astype(int)
-            emgMsg.start_time = data.index[0]
-            data = data[data['Sensor_id'] == emgId]
-            data = data['EMG'].to_numpy()
-            # print("ID: ", emgId)
-            # print(numpy.size(data))
-            data = self.downSample(data, 2000, 1000);
-            for dataPoint in data:
-                emgMsg.emg.append(dataPoint)
-            multiEMGMsg.trigno_emg.append(emgMsg)
+        if len(self.emgData) > 0:
+            for emgId, emgLabel in zip(self.emgIDs, self.emgLabels):
+                emgMsg = trignoEMG()
+                emgMsg.emg_id = emgId
+                emgMsg.emg_pos = emgLabel
+                data = self.emgData
+                data['Sensor_id'] = data['Sensor_id'].astype(int)
+                emgMsg.start_time = data.index[0]
+                data = data[data['Sensor_id'] == emgId]
+                data = data['EMG'].to_numpy()
+                # print("ID: ", emgId)
+                # print(numpy.size(data))
+                data = self.downSample(data, 2000, 1000);
+                for dataPoint in data:
+                    emgMsg.emg.append(dataPoint)
+                multiEMGMsg.trigno_emg.append(emgMsg)
 
-        self.emgPublisher.publish(multiEMGMsg)
+            self.emgPublisher.publish(multiEMGMsg)
 
     def calibrate(self):
         self.q0List = []
