@@ -13,28 +13,30 @@ from PyQt5.QtCore import QCoreApplication
 import sys # We need sys so that we can pass argv to QApplication
 from scipy import signal
 
-class GuiApp(QWidget):
-    def __init__(self, trigno_capture):
-        super().__init__()
-        self.trigno_capture = trigno_capture
-        self.initUI()
+# class GuiApp(QWidget):
+#     def __init__(self, trigno_capture):
+#         super().__init__()
+#         self.trigno_capture = trigno_capture
+#         self.initUI()
+#
+#
+#     def initUI(self):
+#         self.setWindowTitle('Simple Button GUI')
+#         layout = QVBoxLayout(self)
+#
+#         self.button = QPushButton('Calibrate', self)
+#         self.button.clicked.connect(self.onButtonClicked)
+#
+#         self.button.setFixedSize(300, 200)  # Set to 200px wide by 50px tall
+#         self.button.setStyleSheet("font-size: 40px;")
+#
+#         layout.addWidget(self.button)
+#         self.setLayout(layout)
+#
+#     def onButtonClicked(self):
+#         self.trigno_capture.calibrate()
+#
 
-
-    def initUI(self):
-        self.setWindowTitle('Simple Button GUI')
-        layout = QVBoxLayout(self)
-
-        self.button = QPushButton('Calibrate', self)
-        self.button.clicked.connect(self.onButtonClicked)
-
-        self.button.setFixedSize(300, 200)  # Set to 200px wide by 50px tall
-        self.button.setStyleSheet("font-size: 40px;")
-
-        layout.addWidget(self.button)
-        self.setLayout(layout)
-
-    def onButtonClicked(self):
-        self.trigno_capture.calibrate()
 class TrignoCapture:
     def __init__(self, sensors):
         # self.trigno_sensors = TrignoAdapter()
@@ -77,6 +79,7 @@ class TrignoCapture:
         self.q0List = [] # initializing list of Quat0
         for imuId in self.imuIDs:
             q = Quaternion()
+            q.w = 1
             self.q0List.append(q)
 
 
@@ -160,20 +163,22 @@ class TrignoCapture:
 
             self.emgPublisher.publish(multiEMGMsg)
 
-    def calibrate(self):
-        self.q0List = []
-        for imuId in self.imuIDs:
-            data = self.imuData
-            data['Sensor_id'] = data['Sensor_id'].astype(int)
-            data = data[data['Sensor_id'] == imuId]
-            q = Quaternion()
-            q.x = data.iloc[0]['qx']
-            q.y = data.iloc[0]['qy']
-            q.z = data.iloc[0]['qz']
-            q.w = data.iloc[0]['qw']
-            print("sensor ", imuId, "calibration q: ")
-            print(q)
-            self.q0List.append(q)
+    # def calibrate(self):
+    #     self.q0List = []
+    #     for imuId in self.imuIDs:
+    #         data = self.imuData
+    #         #print(data)
+    #         data['Sensor_id'] = data['Sensor_id'].astype(int)
+    #         data = data[data['Sensor_id'] == imuId]
+    #         q = Quaternion()
+    #         q.x = data.iloc[0]['qx']
+    #         q.y = data.iloc[0]['qy']
+    #         q.z = data.iloc[0]['qz']
+    #         q.w = data.iloc[0]['qw']
+    #         print("sensor ", imuId, "calibration q: ")
+    #         # print(numpy.linalg.norm([q.x, q.y, q.z, q.w]))
+    #         print(q)
+    #         self.q0List.append(q)
 
     def start(self):
         self.emg_sensors.start_acquisition()
@@ -188,9 +193,10 @@ if __name__ == "__main__":
     rospy.init_node("trigno_capture")
 
     # Dictionary of the sensor with sensor label and mode
-    sensors = {1: ['left_thigh_front', 'both'], 2: ['left_thigh_back', 'both'], 3: ['left_shank_front', 'both'],
-               4: ['left_shank_back', 'both'], 5: ['right_thigh_front', 'both'], 6: ['right_thigh_back', 'both'],
-               7: ['right_shank_front', 'both'], 8: ['right_shank_back', 'both'], 9: ['trunk_back', 'both']}
+    sensors = {1: ['left_thigh_front_1', 'both'], 2: ['left_thigh_front_2', 'both'],  3: ['left_thigh_back', 'both'],
+               4: ['left_shank_front', 'both'], 5: ['left_shank_back', 'both'], 6: ['right_thigh_front_1', 'both'],
+               7: ['right_thigh_front_2', 'both'], 8: ['right_thigh_back', 'both'], 9: ['right_shank_front', 'both'],
+               10: ['right_shank_back', 'both']}
 
     # sensors = {1: ['left_thigh_front', 'both'], 2: ['left_thigh_back', 'both']}
     # sensors = {1: ['left_thigh_front', 'both']}
@@ -200,11 +206,13 @@ if __name__ == "__main__":
     trigno_capture.start()
     rospy.on_shutdown(trigno_capture.stop)
     rospy.loginfo("Sensor node is ready.")
+    rospy.loginfo("-- Only publishing raw q values - Calibrate on CORC --")
+
 
     # Initialize PyQt application
-    app = QApplication(sys.argv)
-    gui = GuiApp(trigno_capture)
-    gui.show()
+    # app = QApplication(sys.argv)
+    # gui = GuiApp(trigno_capture)
+    # gui.show()
 
     rate = 50
     while not rospy.is_shutdown():
@@ -213,7 +221,7 @@ if __name__ == "__main__":
         # print("advance takes: ", (time.perf_counter() - prevTime)*1000, "ms.")
 
         # Process PyQt events to keep GUI responsive
-        QCoreApplication.processEvents()
+        # QCoreApplication.processEvents()
 
         while(time.perf_counter() - prevTime < 1.0/rate):
             pass
