@@ -192,9 +192,13 @@ class TrignoCapture:
 if __name__ == "__main__":
     rospy.init_node("trigno_capture")
 
+    right_param = rospy.get_param('/right')
+
     # Dictionary of the sensor with sensor label and mode
-    sensors = {1: ['left_TA', 'emg'], 2: ['left_MG', 'emg'],  3: ['left_SOL', 'emg'], 4: ['left_LG', 'emg'],
-               5: ['right_TA', 'emg'], 6: ['right_MG', 'emg'], 7: ['right_SOL', 'emg'], 8: ['right_LG', 'emg']}
+    if right_param:
+        sensors = {5: ['right_TA', 'emg'], 6: ['right_MG', 'emg'], 7: ['right_SOL', 'emg'], 8: ['right_LG', 'emg']}
+    else:
+        sensors = {1: ['left_TA', 'emg'], 2: ['left_MG', 'emg'], 3: ['left_SOL', 'emg'], 4: ['left_LG', 'emg']}
 
     trigno_capture = TrignoCapture(sensors)
     trigno_capture.start()
