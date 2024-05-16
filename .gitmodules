@@ -1,3 +1,4 @@
 [submodule "src/pytrignos"]
 	path = src/pytrignos
 	url = https://github.com/ponsLab/pytrignos
+	branch = main
