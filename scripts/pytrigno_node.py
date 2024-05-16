@@ -93,14 +93,14 @@ class TrignoCapture:
         #instEMG = emgData[emgData['Sensor_id'] == 1]['EMG']
 
         self.call_counter = self.call_counter + 1
-        if len(self.imuData) == 0:
+        if len(self.imuData) == 0 and len(self.imuIDs) > 0:
             self.empty_counter_imu = self.empty_counter_imu + 1
             print("Empty IMU", self.empty_counter_imu, "in ", self.call_counter)
-        if len(self.emgData) == 0:
+        if len(self.emgData) == 0 and len(self.emgIDs) > 0:
             self.empty_counter_emg = self.empty_counter_emg + 1
             print("Empty EMG", self.empty_counter_emg, "in ", self.call_counter)
 
-        if len(self.imuData) != 0:
+        if len(self.imuData) != 0 or len(self.emgData) != 0:
             pass
             self.publish()
 
