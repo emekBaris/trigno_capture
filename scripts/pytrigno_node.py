@@ -192,7 +192,7 @@ class TrignoCapture:
 if __name__ == "__main__":
     rospy.init_node("trigno_capture")
 
-    right_param = rospy.get_param('/right')
+    right_param = rospy.get_param('/right_side')
 
     # Dictionary of the sensor with sensor label and mode
     if right_param:

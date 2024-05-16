@@ -1,5 +1,6 @@
 <launch>
-    <param name="right" type="bool" value="true"/>
+    <arg name="right" default="true"/>
+    <rosparam param="right_side" subst_value="True">$(arg right)</rosparam>
     <node name="trigno_capture" pkg="trigno_capture" type="pytrigno_node.py" output="screen">
     </node>
 </launch>
